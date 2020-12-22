@@ -36,3 +36,18 @@
     transform: rotate(360deg);
   }
 }
+
+.InputForm {
+  background-color: grey;
+  border: 1px solid black;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.CardBox {
+  display: inline-block;
+}
+
+.PointsBox {
+  display: inline-block;
+}
