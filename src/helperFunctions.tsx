@@ -1,10 +1,10 @@
-import { CardType } from './displayResults';
+import { CardType, EntryType } from './displayResults';
 import _ from 'lodash';
 
 export const cardRanks = _.range(1, 14);
 export const cardSuites = ['H', 'D', 'S', 'C'];
 
-const deck: Array<CardType> = [];
+export const deck: Array<CardType> = [];
 cardRanks.forEach(cR => {
   cardSuites.forEach(cS => {
     deck.push({rank: cR, suite: cS});
@@ -17,17 +17,21 @@ const count15 = (cards: Array<CardType>, starter: CardType) => {
   const count15Helper = (index: number, subtotal: number) => {
     for (let i = index; i < cardArray.length; i += 1) {
       let sub = subtotal + (cardArray[i].rank <= 10 ? cardArray[i].rank : 10);
-      if (sub === 15) fifteenCount += 2;
+      if (sub === 15) {
+        fifteenCount += 2;
+      }
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       else if (sub < 15) count15Helper(i+1, sub);
     }
-  }
+  };
+  count15Helper(0, 0);
   return fifteenCount;
-}
+};
 
  export const countFlush = (cards: Array<CardType>, starter: CardType) => {
   if(_.uniqBy(cards, 'suite').length === 1) {
-    return cards[0].suite === starter.suite ? 5 : 4;
+    const points = cards[0].suite === starter.suite ? 5 : 4;
+    return points;
   }
   return 0;
 }
@@ -42,25 +46,29 @@ const countPairs = (cards: Array<CardType>, starter: CardType) => {
       pairs += 1;
     }
   }
-  return pairs * 2;
+  const points = pairs * 2;
+  return points;
 };
 
 const countRuns = (cards: Array<CardType>, starter: CardType) => {
   const cardArray = _.concat(cards, starter);
-  const uniqueRanks = _.uniqBy(cardArray, 'rank').map(m => m.rank);
+  const uniqueRanks = _.uniqBy(cardArray, 'rank').map(m => m.rank).sort((a, b) => a - b);
   const rankByCount = Object.fromEntries(uniqueRanks.map(uR => [uR, 0]));
   cardArray.forEach(cA => rankByCount[cA.rank] += 1);
   let startIndex = 0, longestStreak = 1, currentStreak = 1, numberOfRuns = 0;
   for(let i = 0; i < uniqueRanks.length; i += 1) {
+    currentStreak = 1;
     for(let j = i+1; j < uniqueRanks.length; j += 1) {
-      if(uniqueRanks[j] === uniqueRanks[j-1] + 1)
+      if(uniqueRanks[j] === uniqueRanks[j-1] + 1) {
         currentStreak += 1;
-      else if (currentStreak > longestStreak) {
-        longestStreak = currentStreak;
-        currentStreak = 1;
-        startIndex = i;
-        break;
+        continue;
       }
+      break;
+    }
+    if (currentStreak > longestStreak) {
+      longestStreak = currentStreak;
+      currentStreak = 1;
+      startIndex = i;
     }
   }
   if (longestStreak > 2) {
@@ -68,22 +76,46 @@ const countRuns = (cards: Array<CardType>, starter: CardType) => {
     for (let k = 0; k < longestStreak; k++) {
       numberOfRuns *= rankByCount[uniqueRanks[startIndex + k]]; 
     }
-    return numberOfRuns * longestStreak;
+    const points = numberOfRuns * longestStreak;
+    return points;
   }
   return 0;
 };
 
 const countNibs = (cards: Array<CardType>, starter: CardType) => {
-  return (_.findIndex(cards, c => c.suite === starter.suite && c.rank === 11) >= 0) ? 1 : 0;
+  const points = (_.findIndex(cards, c => c.suite === starter.suite && c.rank === 11) >= 0) ? 1 : 0;
+  return points;
 };
 
 const countAll = (cards: Array<CardType>, starter: CardType) => {
-  return count15(cards, starter) + countPairs(cards, starter) + countRuns(cards, starter) + countNibs(cards, starter);
+  const points15 = count15(cards, starter); 
+  const pointsPairs = countPairs(cards, starter);
+  const pointsRun = countRuns(cards, starter);
+  const pointsNibs = countNibs(cards, starter);
+  const pointsFlush = countFlush(cards, starter);
+  const points = points15 + pointsPairs + pointsRun + pointsNibs + pointsFlush;
+  return points;
 }
 
 const createSubGroups = (dealtHand: Array<CardType>, subGroupSize: number) => {
   const subGroupArray: Array<Array<CardType>> = [];
-  const toRemoveSize = dealtHand.length - subGroupSize;
+  const indicesToRemove = dealtHand.length - subGroupSize;
+  const subGroupHelper = (indicesArray: Array<number>, toRemoveSize: number, minIndex: number) => {
+    if (toRemoveSize === 0) {
+      const hand: Array<CardType> = [];
+      indicesArray.forEach(iA => {
+        hand.push(dealtHand[iA]);
+      });
+      subGroupArray.push(hand);
+      return;
+    }
+    for (let i = minIndex; i < indicesArray.length; i += 1) {
+      let smallerArray = _.cloneDeep(indicesArray);
+      smallerArray.splice(i, 1);
+      subGroupHelper(smallerArray, toRemoveSize - 1, minIndex + 1);
+    }
+  };
+  subGroupHelper(_.range(0, dealtHand.length), indicesToRemove, 0);
   return subGroupArray;
 };
 
@@ -91,16 +123,57 @@ const createRemainingDeck = (dealtHand: Array<CardType>, deck: Array<CardType>) 
   return _.differenceWith(deck, dealtHand, _.isEqual);
 };
 
+const calculateMean = (numbers: Array<number>) => {
+  return numbers.reduce((acc, curr) => acc + curr) / numbers.length;
+};
+
+const calculateMedianSorted = (numbers: Array<number>) => {
+  if (numbers.length % 2 === 1) {
+    return numbers[Math.floor(numbers.length/2)];
+  }
+  return (numbers[numbers.length/2] + numbers[Math.floor(numbers.length/2-1)]) / 2
+};
+
+const calculateIQR = (numbers: Array<number>) => {
+  numbers.sort((a, b) => a - b);
+  if (numbers.length % 2 === 1) {
+    return [
+      calculateMedianSorted(_.slice(numbers, 0, Math.floor(numbers.length / 2))), 
+      calculateMedianSorted(numbers),
+      calculateMedianSorted(_.slice(numbers, numbers.length/2 + 1))
+    ];
+  }
+  return [
+    calculateMedianSorted(_.slice(numbers, 0, Math.floor(numbers.length / 2 ))), 
+    calculateMedianSorted(numbers),
+    calculateMedianSorted(_.slice(numbers, numbers.length/2 ))
+  ];
+};
+
+const calculateMaximumPoints = (numbers: Array<number>) => {
+  numbers.sort((a, b) => a - b);
+  return numbers[numbers.length - 1];
+}
+
 const createPointTree = (dealtHand: Array<CardType>, deck: Array<CardType>) => {
   const remainingDeck = createRemainingDeck(dealtHand, deck);
   const allHands = createSubGroups(dealtHand, 4);
-  const pointBreakdown: Array<{hand: Array<CardType>, averagePoints: number}> = [];
+  const pointBreakdown: Array<EntryType> = [];
   allHands.forEach(aH => {
-    let pointTotal = 0;
+    let pointPossibilities: Array<number> = [];
     remainingDeck.forEach(rD => {
-      pointTotal += countAll(aH, rD);
+      const roundPoints = countAll(aH, rD);
+      pointPossibilities.push(roundPoints);
     });
-    pointBreakdown.push({hand: _.cloneDeep(aH), averagePoints: pointTotal / remainingDeck.length})
+    const IQR = calculateIQR(pointPossibilities);
+    pointBreakdown.push({
+      cards: _.cloneDeep(aH), 
+      mean: calculateMean(pointPossibilities), 
+      max: calculateMaximumPoints(pointPossibilities), 
+      firstQuartile: IQR[0], 
+      secondQuartile: IQR[1], 
+      thirdQuartile: IQR[2]
+    });
   });
   return pointBreakdown;
 };

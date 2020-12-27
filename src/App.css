@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  font-family: monospace;
 }
 
 .App-logo {
@@ -44,10 +45,20 @@
   padding: 10px;
 }
 
-.CardBox {
-  display: inline-block;
+td {
+  padding: 10px;
+  border: 1px solid black;
 }
 
-.PointsBox {
-  display: inline-block;
+th {
+  padding: 10px;
+  border: 2px solid black;
+}
+
+td .BlackSuit {
+  color: black;
+}
+
+td .RedSuit {
+  color: red;
 }
