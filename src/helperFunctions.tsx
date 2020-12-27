@@ -1,6 +1,5 @@
 import { CardType, EntryType } from './displayResults';
 import _ from 'lodash';
-import { start } from 'repl';
 
 export const cardRanks = _.range(1, 14);
 export const cardSuites = ['H', 'D', 'S', 'C'];
