@@ -1,5 +1,6 @@
 import { CardType, EntryType } from './displayResults';
 import _ from 'lodash';
+import { start } from 'repl';
 
 export const cardRanks = _.range(1, 14);
 export const cardSuites = ['H', 'D', 'S', 'C'];
@@ -99,9 +100,9 @@ const countAll = (cards: Array<CardType>, starter: CardType) => {
 
 const createSubGroups = (dealtHand: Array<CardType>, subGroupSize: number) => {
   const subGroupArray: Array<Array<CardType>> = [];
-  const indicesToRemove = dealtHand.length - subGroupSize;
-  const subGroupHelper = (indicesArray: Array<number>, toRemoveSize: number, minIndex: number) => {
-    if (toRemoveSize === 0) {
+  const subGroupHelper = (indicesArray: Array<number>, lengthToAdd: number, startIndex: number) => {
+    console.log(indicesArray, lengthToAdd, startIndex);
+    if (lengthToAdd === 0) {
       const hand: Array<CardType> = [];
       indicesArray.forEach(iA => {
         hand.push(dealtHand[iA]);
@@ -109,13 +110,12 @@ const createSubGroups = (dealtHand: Array<CardType>, subGroupSize: number) => {
       subGroupArray.push(hand);
       return;
     }
-    for (let i = minIndex; i < indicesArray.length; i += 1) {
-      let smallerArray = _.cloneDeep(indicesArray);
-      smallerArray.splice(i, 1);
-      subGroupHelper(smallerArray, toRemoveSize - 1, minIndex + 1);
+    for (let i = startIndex; i <= dealtHand.length - lengthToAdd; i += 1) {
+      indicesArray[subGroupSize - lengthToAdd] = i;
+      subGroupHelper(indicesArray, lengthToAdd - 1, i + 1);
     }
   };
-  subGroupHelper(_.range(0, dealtHand.length), indicesToRemove, 0);
+  subGroupHelper(Array.apply(null, Array(subGroupSize)).map(() => 0), subGroupSize, 0);
   return subGroupArray;
 };
 
